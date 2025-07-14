@@ -77,73 +77,67 @@ h1, h2 {
   <!-- keep the same <script> you already have -->
 </body>
 
-    <script type="module">
+<script type="module">
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
-const API_KEY = "你的密钥";
+const API_KEY = "AIzaSyCQArQERu9Nk-E9hnKxOB6F3B285eJu9OI";          // ← 记得换成真实 key
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-const news = "7月14日，巴黎奥运会开幕式进入最后一周倒计时，法国警方加强安保措施，确保约30万观众安全。";
+// 1. 抓取 China Daily 第一条新闻
+async function fetchNews() {
+  // 用国内可访问的 CORS 代理 + RSS 地址
+  const rssUrl = "https://www.chinadaily.com.cn/rss/world.xml";
+  const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
+  const xml    = await fetch(proxy).then(r => r.text());
 
-async function run() {
-  // 1) 原文 & 改写
-  const prompt_en = `将下面中文新闻改写成英文，300±20字：\n${news}`;
-  document.getElementById("origin").innerText = news;
-  document.getElementById("en").innerText   = (await model.generateContent(prompt_en)).response.text();
-
-  // 2) 三语翻译
-  const [ja, fr, de] = await Promise.all([
-    model.generateContent(`翻译成日语：\n${news}`),
-    model.generateContent(`翻译成法语：\n${news}`),
-    model.generateContent(`翻译成德语：\n${news}`)
-  ]);
-  document.getElementById("ja").innerText = ja.response.text();
-  document.getElementById("fr").innerText = fr.response.text();
-  document.getElementById("de").innerText = de.response.text();
-
-  // 3) 5 个关键词汇卡片
-  const prompt_vocab = `
-从上面英文改写中，挑出 5 个对日语/法语/德语初学者来说较难的核心词汇。
-为每个词给出：
-- 原词
-- 音标（英式 IPA）
-- 英/日/法/德 四种语言释义
-- 1 句简短例句
-输出格式：每词占一行，用 | 分隔字段
-`;
-  const vocabRaw = (await model.generateContent(prompt_vocab)).response.text();
-  const vocabLines = vocabRaw.trim().split('\n');
-  let html = '';
-  vocabLines.forEach(line => {
-    const [word, ipa, ...rest] = line.split('|');
-    html += `<div style="border:1px solid #ddd;margin:6px 0;padding:8px;">
-      <strong>${word}</strong> ${ipa}<br>
-      ${rest.join(' / ')}
-    </div>`;
-  });
-  document.getElementById("vocab").innerHTML = html;
-
-  // 4) 迷你语法点（各 1 句）
-  const grammarPrompt = (lang) => `用中文解释下面英文句子中，一句最简单的${lang}语法现象：\n${document.getElementById("en").innerText}`;
-  document.getElementById("grammar-ja").innerText = (await model.generateContent(grammarPrompt("日语"))).response.text();
-  document.getElementById("grammar-fr").innerText = (await model.generateContent(grammarPrompt("法语"))).response.text();
-  document.getElementById("grammar-de").innerText = (await model.generateContent(grammarPrompt("德语"))).response.text();
+  // 2. 简单解析：取第一条 <title> 和 <description>
+  const title = xml.match(/<title>(.*?)<\/title>/i)?.[1] || "";
+  const desc  = xml.match(/<description>(.*?)<\/description>/i)?.[1] || "";
+  return title + " " + desc;
 }
 
-window.addEventListener('DOMContentLoaded', run);
-</script>
-    <!-- ===== Vocabulary Cards ===== -->
-<div class="section">
-  <h2>🔑 5 Key Words</h2>
-  <div id="vocab"></div>
-</div>
+// 3. 主流程
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const news = await fetchNews();
+    document.getElementById("origin").innerText = news;
 
-<!-- ===== Grammar Spotlight ===== -->
-<div class="section">
-  <h2>📚 Mini Grammar</h2>
-  <p><strong>Japanese:</strong> <span id="grammar-ja"></span></p>
-  <p><strong>French:</strong> <span id="grammar-fr"></span></p>
-  <p><strong>German:</strong> <span id="grammar-de"></span></p>
-</div>
+    // 英文改写
+    const en = await model.generateContent(`将下面中文新闻改写成英文，300±20字：\n${news}`);
+    document.getElementById("en").innerText = en.response.text();
+
+    // 三语翻译
+    const [ja, fr, de] = await Promise.all([
+      model.generateContent(`翻译成日语：\n${news}`),
+      model.generateContent(`翻译成法语：\n${news}`),
+      model.generateContent(`翻译成德语：\n${news}`)
+    ]);
+    document.getElementById("ja").innerText = ja.response.text();
+    document.getElementById("fr").innerText = fr.response.text();
+    document.getElementById("de").innerText = de.response.text();
+
+    // 词汇卡片（同上逻辑）
+    const vocabRaw = (await model.generateContent(
+      `从上面英文改写中，挑出5个对日语/法语/德语初学者较难的核心词汇，格式：原词|音标|英/日/法/德释义|例句`
+    )).response.text();
+    const lines = vocabRaw.trim().split('\n');
+    let html = '';
+    lines.forEach(line => {
+      const [word, ipa, ...rest] = line.split('|');
+      html += `<div class="vocab-card">${word} ${ipa}<br>${rest.join(' / ')}</div>`;
+    });
+    document.getElementById("vocab").innerHTML = html;
+
+    // 迷你语法
+    const grammarPrompt = (lang) => `用中文指出上面英文句子里最简单的${lang}语法现象`;
+    document.getElementById("grammar-ja").innerText = (await model.generateContent(grammarPrompt("日语"))).response.text();
+    document.getElementById("grammar-fr").innerText = (await model.generateContent(grammarPrompt("法语"))).response.text();
+    document.getElementById("grammar-de").innerText = (await model.generateContent(grammarPrompt("德语"))).response.text();
+
+  } catch (err) {
+    document.getElementById("origin").innerText = "网络或API出错：" + err.message;
+  }
+});
+</script>
 </body>
 </html>
