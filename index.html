@@ -86,7 +86,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 // 1. 抓取 China Daily 第一条新闻
 async function fetchNews() {
   // 用国内可访问的 CORS 代理 + RSS 地址
-  const rssUrl = "https://www.chinadaily.com.cn/rss/world.xml";
+  const rssUrl = "http://www.xinhuanet.com/english/rss/worldrss.xml";
   const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
   const xml    = await fetch(proxy).then(r => r.text());
 
