@@ -1,9 +1,40 @@
-<script type="module">
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>每日多语言新闻</title>
+    <style>
+        body {font-family: "PingFang SC", sans-serif; margin: 20px; line-height: 1.6;}
+        h1 {font-size: 24px;}
+        .section {margin-bottom: 30px;}
+    </style>
+</head>
+<body>
+    <h1>今日新闻（示例）</h1>
+
+    <div class="section">
+        <h2>中文原文</h2>
+        <p id="origin">正在加载……</p>
+    </div>
+
+    <div class="section">
+        <h2>英语改写（300±20 字）</h2>
+        <p id="en">正在加载……</p>
+    </div>
+
+    <div class="section">
+        <h2>日语 / 法语 / 德语翻译</h2>
+        <p id="ja">正在加载……</p>
+        <p id="fr">正在加载……</p>
+        <p id="de">正在加载……</p>
+    </div>
+
+   <script type="module">
   // 1. 引入谷歌 Gemini SDK（国内可直连）
   import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
 
   // 2. 用你的 Gemini Key（免费申请，步骤见下方）
-  const API_KEY = "AIzaSyCQArQERu9Nk-E9hnKxOB6F3B285eJu9OI";
+  const API_KEY = "你的密钥";
   const genAI = new GoogleGenerativeAI(API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
@@ -31,3 +62,5 @@
 
   run();
 </script>
+</body>
+</html>
