@@ -83,20 +83,21 @@ const API_KEY = "AIzaSyCQArQERu9Nk-E9hnKxOB6F3B285eJu9OI";          // ← 记�
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-// 1. 抓取 China Daily 第一条新闻
+// 1. 抓取新华网英文版第一条新闻
 async function fetchNews() {
-  // 用国内可访问的 CORS 代理 + RSS 地址
   const rssUrl = "http://www.xinhuanet.com/english/rss/worldrss.xml";
   const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
   const xml    = await fetch(proxy).then(r => r.text());
 
-  // 解析第一条 <item> 里的 title & description
-const title  = xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/i)?.[1]?.trim() || "";
-const desc   = xml.match(/<item>[\s\S]*?<description>(.*?)<\/description>/i)?.[1]?.trim() || "";
-const news   = title + " " + desc.replace(/<[^>]*>/g, "");   // 去掉 HTML 标签
+  // 2. 提取第一条 <item> 的 title 和 description
+  const titleMatch = xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/i);
+  const descMatch  = xml.match(/<item>[\s\S]*?<description>(.*?)<\/description>/i);
+  const title = titleMatch ? titleMatch[1].trim() : "";
+  const desc  = descMatch  ? descMatch[1].trim().replace(/<[^>]*>/g, "") : "";
+  return title + " " + desc;
 }
 
-// 3. 主流程
+// 3. 主流程：生成所有内容并插入页面
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     const news = await fetchNews();
