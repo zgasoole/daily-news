@@ -34,7 +34,14 @@ h1, h2 {
   padding-left: 1rem;
   margin-bottom: 0.8rem;
 }
-
+.lang-box {
+  flex: 1 1 30%;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.8rem;
+  min-width: 200px;
+}
 /* === Responsive === */
 @media (max-width: 600px) {
   body { padding: 1rem; }
@@ -73,6 +80,15 @@ h1, h2 {
     <p><strong>🇫🇷 French：</strong><span id="grammar-fr">正在加载…</span></p>
     <p><strong>🇩🇪 German：</strong><span id="grammar-de">正在加载…</span></p>
   </div>
+       
+  <div class="card">
+  <h2>🌏 三语翻译</h2>
+  <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+    <div class="lang-box">🇯🇵 日语<br><span id="ja">正在加载…</span></div>
+    <div class="lang-box">🇫🇷 法语<br><span id="fr">正在加载…</span></div>
+    <div class="lang-box">🇩🇪 德语<br><span id="de">正在加载…</span></div>
+  </div>
+</div>
 
   <!-- keep the same <script> you already have -->
 </body>
