@@ -1,36 +1,33 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <title>每日多语言新闻</title>
-    <style>
-        body {font-family: "PingFang SC", sans-serif; margin: 20px; line-height: 1.6;}
-        h1 {font-size: 24px;}
-        .section {margin-bottom: 30px;}
-    </style>
-</head>
-<body>
-    <h1>今日新闻（示例）</h1>
+<script type="module">
+  // 1. 引入谷歌 Gemini SDK（国内可直连）
+  import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
 
-    <div class="section">
-        <h2>中文原文</h2>
-        <p id="origin">正在加载……</p>
-    </div>
+  // 2. 用你的 Gemini Key（免费申请，步骤见下方）
+  const API_KEY = "你的密钥";
+  const genAI = new GoogleGenerativeAI(API_KEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-    <div class="section">
-        <h2>英语改写（300±20 字）</h2>
-        <p id="en">正在加载……</p>
-    </div>
+  // 3. 示例：先写死一篇中文新闻（下一步再自动抓）
+  const news = "7月14日，巴黎奥运会开幕式进入最后一周倒计时，法国警方加强安保措施，确保约30万观众安全。";
 
-    <div class="section">
-        <h2>日语 / 法语 / 德语翻译</h2>
-        <p id="ja">正在加载……</p>
-        <p id="fr">正在加载……</p>
-        <p id="de">正在加载……</p>
-    </div>
+  // 4. 调用 AI 改写英文
+  async function run() {
+    const prompt_en = `将下面中文新闻改写成英文，300±20字：\n${news}`;
+    const result_en = await model.generateContent(prompt_en);
+    document.getElementById("en").innerText = result_en.response.text();
 
-    <script>
-        // 下一步再填内容，现在先留空
-    </script>
-</body>
-</html>
+    // 5. 调用 AI 翻译日法德
+    const prompt_ja = `翻译成日语：\n${news}`;
+    const prompt_fr = `翻译成法语：\n${news}`;
+    const prompt_de = `翻译成德语：\n${news}`;
+
+    document.getElementById("ja").innerText = (await model.generateContent(prompt_ja)).response.text();
+    document.getElementById("fr").innerText = (await model.generateContent(prompt_fr)).response.text();
+    document.getElementById("de").innerText = (await model.generateContent(prompt_de)).response.text();
+
+    // 6. 原文显示
+    document.getElementById("origin").innerText = news;
+  }
+
+  run();
+</script>
