@@ -83,62 +83,86 @@ const API_KEY = "AIzaSyCQArQERu9Nk-E9hnKxOB6F3B285eJu9OI";          // ← 记�
 const genAI = new GoogleGenerativeAI(API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
-// 1. 抓取新华网英文版第一条新闻
 async function fetchNews() {
   const rssUrl = "http://www.xinhuanet.com/english/rss/worldrss.xml";
   const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
   const xml    = await fetch(proxy).then(r => r.text());
 
-  // 2. 提取第一条 <item> 的 title 和 description
+  // 1. 取第一条 <item> 的 title & description
   const titleMatch = xml.match(/<item>[\s\S]*?<title>(.*?)<\/title>/i);
   const descMatch  = xml.match(/<item>[\s\S]*?<description>(.*?)<\/description>/i);
-  const title = titleMatch ? titleMatch[1].trim() : "";
-  const desc  = descMatch  ? descMatch[1].trim().replace(/<[^>]*>/g, "") : "";
+  let title = titleMatch ? titleMatch[1].trim() : "";
+  let desc  = descMatch  ? descMatch[1].trim()  : "";
+
+  // 2. 去掉 CDATA 和 HTML 标签
+  [title, desc] = [title, desc].map(t => t
+      .replace(/<!\[CDATA\[/g, "")
+      .replace(/\]\]>/g, "")
+      .replace(/<[^>]*>/g, "")
+  );
   return title + " " + desc;
 }
 
-// 3. 主流程：生成所有内容并插入页面
-window.addEventListener('DOMContentLoaded', async () => {
+// 🔴 高亮英文改写 + 词汇/语法
+async function run() {
   try {
     const news = await fetchNews();
     document.getElementById("origin").innerText = news;
 
-    // 英文改写
-    const en = await model.generateContent(`将下面中文新闻改写成英文，300±20字：\n${news}`);
-    document.getElementById("en").innerText = en.response.text();
+    // 1️⃣ 英文改写（要求 AI 高亮）
+    const enPrompt = `
+把下面中文新闻改写成 300±20 字的英文，并在其中 **5 个重难点词汇** 前后加格式：
+**词汇**(中文释义)
+例如：**escalated**(升级)
+原文：${news}
+`;
+    const enText = (await model.generateContent(enPrompt)).response.text();
+    // 渲染时把 **词**(释义) 换成 <b style="color:red">词</b><span style="color:gray">释义</span>
+    const highlighted = enText.replace(
+      /\*\*(.+?)\)\(([^)]+)\)\*\*/g,
+      '<b style="color:red">$1</b><span style="color:gray;font-size:0.9em">($2)</span>'
+    );
+    document.getElementById("en").innerHTML = highlighted;
 
-    // 三语翻译
+    // 2️⃣ 三语翻译
     const [ja, fr, de] = await Promise.all([
       model.generateContent(`翻译成日语：\n${news}`),
       model.generateContent(`翻译成法语：\n${news}`),
       model.generateContent(`翻译成德语：\n${news}`)
     ]);
-    document.getElementById("ja").innerText = ja.response.text();
-    document.getElementById("fr").innerText = fr.response.text();
-    document.getElementById("de").innerText = de.response.text();
-
-    // 词汇卡片（同上逻辑）
-    const vocabRaw = (await model.generateContent(
-      `从上面英文改写中，挑出5个对日语/法语/德语初学者较难的核心词汇，格式：原词|音标|英/日/法/德释义|例句`
-    )).response.text();
-    const lines = vocabRaw.trim().split('\n');
-    let html = '';
-    lines.forEach(line => {
-      const [word, ipa, ...rest] = line.split('|');
-      html += `<div class="vocab-card">${word} ${ipa}<br>${rest.join(' / ')}</div>`;
+    ["ja", "fr", "de"].forEach((id, i) => {
+      document.getElementById(id).innerText = [ja, fr, de][i].response.text();
     });
-    document.getElementById("vocab").innerHTML = html;
 
-    // 迷你语法
-    const grammarPrompt = (lang) => `用中文指出上面英文句子里最简单的${lang}语法现象`;
-    document.getElementById("grammar-ja").innerText = (await model.generateContent(grammarPrompt("日语"))).response.text();
-    document.getElementById("grammar-fr").innerText = (await model.generateContent(grammarPrompt("法语"))).response.text();
-    document.getElementById("grammar-de").innerText = (await model.generateContent(grammarPrompt("德语"))).response.text();
+    // 3️⃣ 5 Key Words
+    const vocabPrompt = `
+从下面英文改写中，挑出 5 个对日/法/德初学者较难的词汇，格式：
+词汇|音标|英/日/法/德释义|例句
+英文改写：${enText}
+`;
+    const vocabRaw = (await model.generateContent(vocabPrompt)).response.text();
+    let vocabHTML = "";
+    vocabRaw.trim().split('\n').forEach(line => {
+      const [w, ipa, ...rest] = line.split('|');
+      vocabHTML += `<div class="vocab-card">
+        <b style="color:red">${w}</b> ${ipa}<br>${rest.join(' / ')}
+      </div>`;
+    });
+    document.getElementById("vocab").innerHTML = vocabHTML || "暂无词汇";
+
+    // 4️⃣ Mini Grammar
+    const grammarPrompt = (lang) =>
+      `用中文指出下面英文句子里最简单的${lang}语法现象，30字以内：\n${enText}`;
+    ["ja", "fr", "de"].forEach(async (lang, idx) => {
+      const res = await model.generateContent(grammarPrompt(lang));
+      document.getElementById(`grammar-${lang}`).innerText = res.response.text();
+    });
 
   } catch (err) {
     document.getElementById("origin").innerText = "网络或API出错：" + err.message;
   }
-});
+}
+window.addEventListener('DOMContentLoaded', run);
 </script>
 </body>
 </html>
